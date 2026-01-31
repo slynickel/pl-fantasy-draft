@@ -12,6 +12,7 @@ watch_paths = ["src/**/*.ts", "src/**/*.tsx"]
 routes = [
   { pattern = "fantasy.example.com/*", zone_name = "example.com" }
 ]
+vars = { LEAGUE_ID = "105341" }
 
 [build.upload]
 format = "modules"

@@ -196,8 +196,8 @@ export function renderHTML(data: DashboardData | null): string {
           <div class="team-name">${entry.entry_name}</div>
           <div class="manager-name">${entry.player_first_name} ${entry.player_last_name}</div>
         </td>
-        <td class="event-points">${entry.event_total || 0}pts</td>
-        <td class="points"><strong>${entry.overall_points}</strong></td>
+        <td style="text-align: center; font-size: 0.9em;">${entry.matches_won || 0}-${entry.matches_played || 0}</td>
+        <td class="event-points">${entry.overall_points || 0}pts</td>
       </tr>
     `)
     .join('');
@@ -228,8 +228,8 @@ export function renderHTML(data: DashboardData | null): string {
                 <tr>
                   <th style="width: 60px;">Pos</th>
                   <th>Team</th>
-                  <th style="width: 100px;">Gameweek</th>
-                  <th style="width: 120px;">Total Points</th>
+                  <th style="width: 100px;">Record</th>
+                  <th style="width: 120px;">Points</th>
                 </tr>
               </thead>
               <tbody>

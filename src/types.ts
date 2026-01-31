@@ -8,8 +8,24 @@ export interface LeagueEntry {
   short_name: string;
   waiver_pick: number;
   event_total?: number;
-  points?: number;
+  overall_points?: number;
   rank?: number;
+  matches_played?: number;
+  matches_won?: number;
+}
+
+export interface Standing {
+  last_rank: number;
+  league_entry: number;
+  matches_drawn: number;
+  matches_lost: number;
+  matches_played: number;
+  matches_won: number;
+  points_against: number;
+  points_for: number;
+  rank: number;
+  rank_sort: number;
+  total: number;
 }
 
 export interface LeagueDetails {
@@ -27,6 +43,7 @@ export interface LeagueDetails {
     }>;
   };
   league_entries: LeagueEntry[];
+  standings: Standing[];
 }
 
 export interface EntryEvent {
