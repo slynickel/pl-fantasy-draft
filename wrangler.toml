@@ -10,7 +10,7 @@ watch_paths = ["src/**/*.ts", "src/**/*.tsx"]
 
 [env.production]
 routes = [
-  { pattern = "fpl.krueger.app/*", zone_name = "krueger.app" }
+  { pattern = "https://fpl.krueger.app/*", zone_name = "krueger.app" }
 ]
 vars = { LEAGUE_ID = "105341" }
 
