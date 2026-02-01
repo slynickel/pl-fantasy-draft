@@ -1,3 +1,4 @@
+// LeagueEntry is a combo of standings and league_entries
 export interface LeagueEntry {
   entry_id: number;
   entry_name: string;
@@ -16,6 +17,8 @@ export interface LeagueEntry {
   matches_drawn?: number;
 }
 
+// Standing is https://draft.premierleague.com/api/league/:LEAGUE_ID/details
+// .standings[]
 export interface Standing {
   last_rank: number;
   league_entry: number;
@@ -30,6 +33,21 @@ export interface Standing {
   total: number;
 }
 
+// LeagueDetails is https://draft.premierleague.com/api/league/:LEAGUE_ID/details
+// .matches[]
+export interface LeagueMatch {
+  event: number;
+  finished: boolean;
+  league_entry_1: number;
+  league_entry_1_points?: number | null;
+  league_entry_2: number;
+  league_entry_2_points?: number | null;
+  started: boolean;
+  winning_league_entry?: number | null;
+  winning_method?: string | null;
+}
+
+// LeagueDetails is https://draft.premierleague.com/api/league/:LEAGUE_ID/details
 export interface LeagueDetails {
   league: {
     id: number;
@@ -49,36 +67,22 @@ export interface LeagueDetails {
   standings: Standing[];
 }
 
-export interface EntryEvent {
-  entry: number;
-  event: number;
-  points: number;
-  total_points: number;
-  rank: number;
-  rank_sort: number;
-  overall_rank: number;
-  bank: number;
-  value: number;
-  event_transfers: number;
-  event_transfers_cost: number;
-  points_on_bench: number;
-}
 
-export interface LeagueMatch {
-  event: number;
+export interface EventInfo {
+  id: number;
+  name: string;
+  deadline_time: string;
+  deadline_time_epoch: number;
   finished: boolean;
-  league_entry_1: number;
-  league_entry_1_points?: number | null;
-  league_entry_2: number;
-  league_entry_2_points?: number | null;
-  started: boolean;
-  winning_league_entry?: number | null;
-  winning_method?: string | null;
 }
 
 export interface DashboardData {
   league: LeagueDetails['league'];
   standings: (LeagueEntry & { event_total: number; overall_points: number; tableTotal: number; })[];
-  matches?: LeagueMatch[];
+  matches?: {
+    prev?: (LeagueMatch & { eventInfo?: EventInfo })[];
+    current?: (LeagueMatch & { eventInfo?: EventInfo })[];
+    next?: (LeagueMatch & { eventInfo?: EventInfo })[];
+  };
   last_updated: string;
 }

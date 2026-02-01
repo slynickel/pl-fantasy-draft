@@ -125,9 +125,53 @@ const styles = `
   }
 
   .matches-card h3 {
-    margin-bottom: 12px;
+    margin-bottom: 6px;
     color: #333;
     font-size: 1.15em;
+  }
+
+  .matches-deadline {
+    font-size: 0.9em;
+    color: #666;
+    margin-bottom: 12px;
+  }
+
+  .matches-prev {
+    background: rgba(245,245,245,0.98);
+    border-left: 4px solid #b0b0b0;
+  }
+
+  .matches-prev h3 {
+    color: #888;
+  }
+
+  .matches-prev .matches-deadline {
+    color: #999;
+  }
+
+  .matches-prev thead {
+    background: linear-gradient(135deg, #888888 0%, #707070 100%);
+  }
+
+  .matches-prev .team-name {
+    color: #666;
+  }
+
+  .matches-prev .manager-name {
+    color: #999;
+  }
+
+  .matches-prev .match-points {
+    color: #888;
+  }
+
+  .matches-prev .match-status {
+    color: #999;
+  }
+
+  .matches-next {
+    background: rgba(255,255,255,0.98);
+    border-left: 4px solid #c7f9cc;
   }
 
   .match-team {
@@ -149,6 +193,23 @@ const styles = `
     width: 100px;
   }
 
+  .prev-week-winner {
+    background-color: #DACBE6;
+    color: #333;
+  }
+
+  .current-week-winner {
+    background-color: #A2774B;
+    font-weight: 900;
+    color: white;
+  }
+
+  .current-week-leading {
+    background-color: #C1AAD5;
+    font-weight: 900;
+    color: #333;
+  }
+    
   .refresh-btn {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: white;
@@ -240,42 +301,78 @@ export function renderHTML(data: DashboardData | null): string {
         </td>
         <td style="text-align: center; font-size: 0.9em;">${entry.matches_won || 0}</td>
         <td style="text-align: center; font-size: 0.9em;">${entry.matches_drawn || 0}</td>
-        <td style="text-align: center; font-size: 0.9em;">${entry.matches_lost}</td>
-        <td style="text-align: center; font-size: 0.9em;">${entry.tableTotal || 0}</td>
-        <td class="event-points" style="text-align: center;">${entry.overall_points || 0}pts</td>
+        <td style="text-align: center; font-size: 0.9em;">${entry.matches_lost || 0}</td>
+        <td class="event-points" style="text-align: left;">${entry.overall_points ?? entry.tableTotal ?? 0} pts</td>
       </tr>
     `;
     })
     .join('');
 
-  const updatedAt = new Date(data.last_updated).toLocaleString();
+  const updatedAtIso = data.last_updated;
 
   const entryMap = new Map((data.standings || []).map(s => [s.id, { name: s.entry_name, manager: s.player_first_name }]));
-  const matches = data.matches || [];
-  const currentEvent = matches.length ? matches[0].event : null;
+  const matchesObj = data.matches || {};
+  const prevMatches = matchesObj.prev || [];
+  const currentMatches = matchesObj.current || [];
+  const nextMatches = matchesObj.next || [];
 
-  const matchesHtml = matches
-    .map(m => `
+  const formatDeadline = (epochMs: number | undefined) => {
+    if (!epochMs) return '';
+    try {
+      const d = new Date(epochMs * 1000);
+      return d.toLocaleString();
+    } catch (e) {
+      return '';
+    }
+  };
+
+  const renderMatchRows = (arr: any[], weekType: 'prev' | 'current' | 'next' = 'current') => arr.map(m => {
+    const team1Points = m.league_entry_1_points ?? 0;
+    const team2Points = m.league_entry_2_points ?? 0;
+    const team1Won = team1Points > team2Points;
+    const team2Won = team2Points > team1Points;
+    
+    let team1Class = '';
+    let team2Class = '';
+    
+    if (weekType === 'prev' && m.finished) {
+      // Previous week: emphasize the winner in gray theme
+      if (team1Won) team1Class = 'prev-week-winner';
+      if (team2Won) team2Class = 'prev-week-winner';
+    } else if (weekType === 'current') {
+      if (m.finished) {
+        // Current week finished: emphasize winner in green
+        if (team1Won) team1Class = 'current-week-winner';
+        if (team2Won) team2Class = 'current-week-winner';
+      } else if (m.started) {
+        // Current week ongoing: highlight the team currently leading
+        if (team1Won) team1Class = 'current-week-leading';
+        if (team2Won) team2Class = 'current-week-leading';
+      }
+    }
+    
+    return `
       <tr>
-        <td>
+        <td class="${team1Class}">
           <div class="team-name">${(entryMap.get(m.league_entry_1) && (entryMap.get(m.league_entry_1) as any).name) || m.league_entry_1}</div>
           <div class="manager-name">${(entryMap.get(m.league_entry_1) && (entryMap.get(m.league_entry_1) as any).manager) || ''}</div>
         </td>
-        <td class="match-points">${m.league_entry_1_points ?? 0}</td>
+        <td class="match-points ${team1Class}">${team1Points}</td>
         <td style="text-align:center; width: 40px;">vs</td>
-        <td class="match-points">${m.league_entry_2_points ?? 0}</td>
-        <td>
+        <td class="match-points ${team2Class}">${team2Points}</td>
+        <td class="${team2Class}">
           <div class="team-name">${(entryMap.get(m.league_entry_2) && (entryMap.get(m.league_entry_2) as any).name) || m.league_entry_2}</div>
           <div class="manager-name">${(entryMap.get(m.league_entry_2) && (entryMap.get(m.league_entry_2) as any).manager) || ''}</div>
         </td>
         <td class="match-status">${m.finished ? 'Finished' : (m.started ? 'Live' : 'Scheduled')}</td>
       </tr>
-    `)
-    .join('');
+    `;
+  }).join('');
 
-  const matchesSection = matchesHtml ? `
-    <div class="matches-card">
-      <h3>Matches${currentEvent ? ' — Week ' + currentEvent : ''}</h3>
+  const prevHtml = prevMatches.length ? `
+    <div class="matches-card matches-prev">
+      <h3>Previous Week${prevMatches[0] ? ' — Week ' + prevMatches[0].event : ''}</h3>
+      ${prevMatches[0]?.eventInfo?.deadline_time_epoch ? `<div class="matches-deadline">Trade Deadline: <span data-epoch="${prevMatches[0].eventInfo.deadline_time_epoch * 1000}" class="deadline-time">${formatDeadline(prevMatches[0].eventInfo.deadline_time_epoch)}</span></div>` : ''}
       <table>
         <thead>
           <tr>
@@ -287,12 +384,58 @@ export function renderHTML(data: DashboardData | null): string {
             <th style="width: 120px;">Status</th>
           </tr>
         </thead>
-        <tbody id="matches-body">
-          ${matchesHtml}
+        <tbody id="matches-prev-body">
+          ${renderMatchRows(prevMatches, 'prev')}
         </tbody>
       </table>
     </div>
   ` : '';
+
+  const currentHtml = currentMatches.length ? `
+    <div class="matches-card">
+      <h3>Matches${currentMatches[0] ? ' — Week ' + currentMatches[0].event : ''}</h3>
+      ${currentMatches[0]?.eventInfo?.deadline_time_epoch ? `<div class="matches-deadline">Trade Deadline: <span data-epoch="${currentMatches[0].eventInfo.deadline_time_epoch * 1000}" class="deadline-time">${formatDeadline(currentMatches[0].eventInfo.deadline_time_epoch)}</span></div>` : ''}
+      <table>
+        <thead>
+          <tr>
+            <th>Team</th>
+            <th style="width: 80px; text-align: center;">Pts</th>
+            <th></th>
+            <th style="width: 80px; text-align: center;">Pts</th>
+            <th>Team</th>
+            <th style="width: 120px;">Status</th>
+          </tr>
+        </thead>
+        <tbody id="matches-current-body">
+          ${renderMatchRows(currentMatches, 'current')}
+        </tbody>
+      </table>
+    </div>
+  ` : '';
+
+  const nextHtml = nextMatches.length ? `
+    <div class="matches-card matches-next">
+      <h3>Next Week${nextMatches[0] ? ' — Week ' + nextMatches[0].event : ''}</h3>
+      ${nextMatches[0]?.eventInfo?.deadline_time_epoch ? `<div class="matches-deadline">Trade Deadline: <span data-epoch="${nextMatches[0].eventInfo.deadline_time_epoch * 1000}" class="deadline-time">${formatDeadline(nextMatches[0].eventInfo.deadline_time_epoch)}</span></div>` : ''}
+      <table>
+        <thead>
+          <tr>
+            <th>Team</th>
+            <th style="width: 80px; text-align: center;">Pts</th>
+            <th></th>
+            <th style="width: 80px; text-align: center;">Pts</th>
+            <th>Team</th>
+            <th style="width: 120px;">Status</th>
+          </tr>
+        </thead>
+        <tbody id="matches-next-body">
+          ${renderMatchRows(nextMatches, 'next')}
+        </tbody>
+      </table>
+    </div>
+  ` : '';
+
+  const matchesSection = `${prevHtml}${currentHtml}${nextHtml}`;
 
   return `
     <!DOCTYPE html>
@@ -309,7 +452,7 @@ export function renderHTML(data: DashboardData | null): string {
           <div class="header">
             <h1>⚽ ${data.league.name}</h1>
             <p>Fantasy Premier League Draft League Standings</p>
-            <div class="last-updated">Last updated: <span id="updated">${updatedAt}</span></div>
+            <div class="last-updated">Last updated: <span id="updated" data-iso="${updatedAtIso}">${updatedAtIso}</span></div>
             <button class="refresh-btn" onclick="location.reload()">🔄 Refresh</button>
           </div>
 
@@ -317,13 +460,12 @@ export function renderHTML(data: DashboardData | null): string {
             <table>
               <thead>
                 <tr>
-                  <th style="">Pos</th>
-                  <th style="">Team</th>
-                  <th style="text-align: center; width: 20px">W</th>
-                  <th style="text-align: center; width: 20px">D</th>
-                  <th style="text-align: center; width: 20px">L</th>
-                  <th style="text-align: center; width: 20px">Pts</th>
-                  <th style="text-align: center; width: 20px">Score</th>
+                  <th style="width:50px">Pos</th>
+                  <th>Team</th>
+                  <th style="text-align: center; width:40px">W</th>
+                  <th style="text-align: center; width:40px">D</th>
+                  <th style="text-align: center; width:40px">L</th>
+                  <th style="text-align: left; width:120px">Points</th>
                 </tr>
               </thead>
               <tbody id="standings-body">
@@ -334,10 +476,60 @@ export function renderHTML(data: DashboardData | null): string {
 
           ${matchesSection}
 
+          <footer style="margin-top:20px; text-align:center; color:#eee; font-size:0.9em;">
+            <a href="https://github.com/slynickel/pl-fantasy-draft" target="_blank" rel="noopener" style="color:#fff; text-decoration:underline;">Source on GitHub</a>
+          </footer>
+
         </div>
 
         <script>
-          // Auto-refresh every 5 minutes
+          // Format deadline and last-updated times in browser local timezone with day of week
+          function formatDeadlineTime(el) {
+            if (!el) return;
+            const epochMs = el.getAttribute('data-epoch');
+            if (!epochMs) return;
+            try {
+              const d = new Date(parseInt(epochMs));
+              if (!isNaN(d.valueOf())) {
+                el.textContent = d.toLocaleString('default', { 
+                  weekday: 'short', 
+                  year: 'numeric', 
+                  month: 'short', 
+                  day: 'numeric', 
+                  hour: '2-digit', 
+                  minute: '2-digit',
+                  second: '2-digit'
+                });
+              }
+            } catch (e) {}
+          }
+
+          function formatUpdated(el) {
+            if (!el) return;
+            const iso = el.getAttribute('data-iso') || el.textContent;
+            try {
+              const d = new Date(iso);
+              if (!isNaN(d.valueOf())) {
+                el.textContent = d.toLocaleString('default', {
+                  weekday: 'short',
+                  year: 'numeric',
+                  month: 'short',
+                  day: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit',
+                  second: '2-digit'
+                });
+              }
+            } catch (e) {}
+          }
+
+          // Format all deadline times on initial load
+          document.querySelectorAll('.deadline-time').forEach(el => formatDeadlineTime(el));
+
+          // initial format
+          formatUpdated(document.getElementById('updated'));
+
+          // Auto-refresh every 5 minutes and update standings/matches/updated
           setInterval(() => {
             fetch(window.location.href)
               .then(r => r.text())
@@ -345,16 +537,36 @@ export function renderHTML(data: DashboardData | null): string {
                 const parser = new DOMParser();
                 const newDoc = parser.parseFromString(html, 'text/html');
                 const newStandings = newDoc.getElementById('standings-body');
-                const newMatches = newDoc.getElementById('matches-body');
+                const newPrev = newDoc.getElementById('matches-prev-body');
+                const newCurrent = newDoc.getElementById('matches-current-body');
+                const newNext = newDoc.getElementById('matches-next-body');
+                const newUpdated = newDoc.getElementById('updated');
                 if (newStandings) {
                   const el = document.getElementById('standings-body');
                   if (el) el.innerHTML = newStandings.innerHTML;
                 }
-                if (newMatches) {
-                  const elm = document.getElementById('matches-body');
-                  if (elm) elm.innerHTML = newMatches.innerHTML;
+                if (newPrev) {
+                  const elm = document.getElementById('matches-prev-body');
+                  if (elm) elm.innerHTML = newPrev.innerHTML;
                 }
-                document.getElementById('updated').textContent = new Date().toLocaleString();
+                if (newCurrent) {
+                  const elm = document.getElementById('matches-current-body');
+                  if (elm) elm.innerHTML = newCurrent.innerHTML;
+                }
+                if (newNext) {
+                  const elm = document.getElementById('matches-next-body');
+                  if (elm) elm.innerHTML = newNext.innerHTML;
+                }
+                // Format deadline times after refresh
+                document.querySelectorAll('.deadline-time').forEach(el => formatDeadlineTime(el));
+                if (newUpdated) {
+                  const target = document.getElementById('updated');
+                  if (target) {
+                    const iso = newUpdated.getAttribute('data-iso') || newUpdated.textContent;
+                    target.setAttribute('data-iso', iso || '');
+                    formatUpdated(target);
+                  }
+                }
               });
           }, 300000); // 5 minutes
         </script>
