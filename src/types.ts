@@ -12,6 +12,8 @@ export interface LeagueEntry {
   rank?: number;
   matches_played?: number;
   matches_won?: number;
+  matches_lost?: number;
+  matches_drawn?: number;
 }
 
 export interface Standing {
@@ -43,6 +45,7 @@ export interface LeagueDetails {
     }>;
   };
   league_entries: LeagueEntry[];
+  matches: LeagueMatch[];
   standings: Standing[];
 }
 
@@ -61,8 +64,21 @@ export interface EntryEvent {
   points_on_bench: number;
 }
 
+export interface LeagueMatch {
+  event: number;
+  finished: boolean;
+  league_entry_1: number;
+  league_entry_1_points?: number | null;
+  league_entry_2: number;
+  league_entry_2_points?: number | null;
+  started: boolean;
+  winning_league_entry?: number | null;
+  winning_method?: string | null;
+}
+
 export interface DashboardData {
   league: LeagueDetails['league'];
-  standings: (LeagueEntry & { event_total: number; overall_points: number })[];
+  standings: (LeagueEntry & { event_total: number; overall_points: number; tableTotal: number; })[];
+  matches?: LeagueMatch[];
   last_updated: string;
 }

@@ -19,7 +19,7 @@ export class FPLClient {
     const entriesMap = new Map(league.league_entries.map(e => [e.id, e]));
     
     // Convert standings to the format we need
-    const standings: Array<LeagueEntry & { event_total: number; overall_points: number }> = [];
+    const standings: Array<LeagueEntry & { event_total: number; overall_points: number, tableTotal: number}> = [];
     standingsData.forEach((standing: any) => {
       const entry = entriesMap.get(standing.league_entry);
       if (entry) {
@@ -37,6 +37,8 @@ export class FPLClient {
           rank: standing.rank,
           matches_played: standing.matches_played,
           matches_won: standing.matches_won,
+          matches_lost: standing.matches_lost,
+          tableTotal: standing.total
         });
       }
     });
@@ -44,9 +46,24 @@ export class FPLClient {
     // Sort by rank
     standings.sort((a, b) => (a.rank || 0) - (b.rank || 0));
 
+    // Determine current event matches: prefer any ongoing event, otherwise use the latest event
+    const allMatches: any[] = (league as any).matches || [];
+    let currentEvent: number | null = null;
+    if (allMatches.length > 0) {
+      const ongoing = allMatches.find(m => m.started && !m.finished);
+      if (ongoing) {
+        currentEvent = ongoing.event;
+      } else {
+        currentEvent = Math.max(...allMatches.map(m => m.event));
+      }
+    }
+
+    const matches = currentEvent ? allMatches.filter(m => m.event === currentEvent) : [];
+
     return {
       league: league.league,
       standings,
+      matches,
       last_updated: new Date().toISOString(),
     };
   }

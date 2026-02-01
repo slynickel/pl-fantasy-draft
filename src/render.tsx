@@ -15,7 +15,7 @@ const styles = `
   }
 
   .container {
-    max-width: 1200px;
+    max-width: 1000px;
     margin: 0 auto;
   }
 
@@ -115,6 +115,40 @@ const styles = `
     min-width: 80px;
   }
 
+  .matches-card {
+    background: white;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.08);
+    margin-top: 24px;
+    padding: 18px;
+  }
+
+  .matches-card h3 {
+    margin-bottom: 12px;
+    color: #333;
+    font-size: 1.15em;
+  }
+
+  .match-team {
+    font-weight: 600;
+    color: #333;
+  }
+
+  .match-points {
+    text-align: center;
+    color: #764ba2;
+    font-weight: 700;
+    width: 72px;
+  }
+
+  .match-status {
+    color: #666;
+    font-size: 0.9em;
+    text-align: center;
+    width: 100px;
+  }
+
   .refresh-btn {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: white;
@@ -161,6 +195,12 @@ const styles = `
       font-size: 1.8em;
     }
 
+    .standings-table,
+    .matches-card {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
     th, td {
       padding: 12px 8px;
       font-size: 0.9em;
@@ -177,6 +217,7 @@ export function renderHTML(data: DashboardData | null): string {
           <meta charset="utf-8">
           <meta name="viewport" content="width=device-width, initial-scale=1">
           <title>Fantasy PL Dashboard</title>
+          <link rel="icon" href="/favicon.ico">
           <style>${styles}</style>
         </head>
         <body>
@@ -189,28 +230,78 @@ export function renderHTML(data: DashboardData | null): string {
   }
 
   const standingsHtml = data.standings
-    .map((entry, index) => `
+    .map((entry, index) => {
+      return `
       <tr>
         <td class="rank">#${index + 1}</td>
         <td>
           <div class="team-name">${entry.entry_name}</div>
-          <div class="manager-name">${entry.player_first_name} ${entry.player_last_name}</div>
+          <div class="manager-name">${entry.player_first_name}</div>
         </td>
-        <td style="text-align: center; font-size: 0.9em;">${entry.matches_won || 0}-${entry.matches_played || 0}</td>
-        <td class="event-points">${entry.overall_points || 0}pts</td>
+        <td style="text-align: center; font-size: 0.9em;">${entry.matches_won || 0}</td>
+        <td style="text-align: center; font-size: 0.9em;">${entry.matches_drawn || 0}</td>
+        <td style="text-align: center; font-size: 0.9em;">${entry.matches_lost}</td>
+        <td style="text-align: center; font-size: 0.9em;">${entry.tableTotal || 0}</td>
+        <td class="event-points" style="text-align: center;">${entry.overall_points || 0}pts</td>
       </tr>
-    `)
+    `;
+    })
     .join('');
 
   const updatedAt = new Date(data.last_updated).toLocaleString();
 
+  const entryMap = new Map((data.standings || []).map(s => [s.id, { name: s.entry_name, manager: s.player_first_name }]));
+  const matches = data.matches || [];
+  const currentEvent = matches.length ? matches[0].event : null;
+
+  const matchesHtml = matches
+    .map(m => `
+      <tr>
+        <td>
+          <div class="team-name">${(entryMap.get(m.league_entry_1) && (entryMap.get(m.league_entry_1) as any).name) || m.league_entry_1}</div>
+          <div class="manager-name">${(entryMap.get(m.league_entry_1) && (entryMap.get(m.league_entry_1) as any).manager) || ''}</div>
+        </td>
+        <td class="match-points">${m.league_entry_1_points ?? 0}</td>
+        <td style="text-align:center; width: 40px;">vs</td>
+        <td class="match-points">${m.league_entry_2_points ?? 0}</td>
+        <td>
+          <div class="team-name">${(entryMap.get(m.league_entry_2) && (entryMap.get(m.league_entry_2) as any).name) || m.league_entry_2}</div>
+          <div class="manager-name">${(entryMap.get(m.league_entry_2) && (entryMap.get(m.league_entry_2) as any).manager) || ''}</div>
+        </td>
+        <td class="match-status">${m.finished ? 'Finished' : (m.started ? 'Live' : 'Scheduled')}</td>
+      </tr>
+    `)
+    .join('');
+
+  const matchesSection = matchesHtml ? `
+    <div class="matches-card">
+      <h3>Matches${currentEvent ? ' — Week ' + currentEvent : ''}</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>Team</th>
+            <th style="width: 80px; text-align: center;">Pts</th>
+            <th></th>
+            <th style="width: 80px; text-align: center;">Pts</th>
+            <th>Team</th>
+            <th style="width: 120px;">Status</th>
+          </tr>
+        </thead>
+        <tbody id="matches-body">
+          ${matchesHtml}
+        </tbody>
+      </table>
+    </div>
+  ` : '';
+
   return `
     <!DOCTYPE html>
     <html>
-      <head>
+        <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <title>${data.league.name} - Fantasy PL Dashboard</title>
+        <link rel="icon" href="/favicon.ico">
         <style>${styles}</style>
       </head>
       <body>
@@ -226,17 +317,23 @@ export function renderHTML(data: DashboardData | null): string {
             <table>
               <thead>
                 <tr>
-                  <th style="width: 60px;">Pos</th>
-                  <th>Team</th>
-                  <th style="width: 100px;">Record</th>
-                  <th style="width: 120px;">Points</th>
+                  <th style="">Pos</th>
+                  <th style="">Team</th>
+                  <th style="text-align: center; width: 20px">W</th>
+                  <th style="text-align: center; width: 20px">D</th>
+                  <th style="text-align: center; width: 20px">L</th>
+                  <th style="text-align: center; width: 20px">Pts</th>
+                  <th style="text-align: center; width: 20px">Score</th>
                 </tr>
               </thead>
-              <tbody>
+              <tbody id="standings-body">
                 ${standingsHtml}
               </tbody>
             </table>
           </div>
+
+          ${matchesSection}
+
         </div>
 
         <script>
@@ -247,7 +344,16 @@ export function renderHTML(data: DashboardData | null): string {
               .then(html => {
                 const parser = new DOMParser();
                 const newDoc = parser.parseFromString(html, 'text/html');
-                document.querySelector('tbody').innerHTML = newDoc.querySelector('tbody').innerHTML;
+                const newStandings = newDoc.getElementById('standings-body');
+                const newMatches = newDoc.getElementById('matches-body');
+                if (newStandings) {
+                  const el = document.getElementById('standings-body');
+                  if (el) el.innerHTML = newStandings.innerHTML;
+                }
+                if (newMatches) {
+                  const elm = document.getElementById('matches-body');
+                  if (elm) elm.innerHTML = newMatches.innerHTML;
+                }
                 document.getElementById('updated').textContent = new Date().toLocaleString();
               });
           }, 300000); // 5 minutes
